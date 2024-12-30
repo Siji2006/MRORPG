@@ -1,0 +1,268 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Other/File.java to edit this template
+ */
+
+/**
+ *
+ * @author user
+ */
+import java.util.Random;
+import java.util.Scanner;
+
+public class MRORPG_FinalProject {
+
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        Random random = new Random();
+        boolean playAgain = true;
+
+        while (playAgain) {
+            // Storyline introduction
+            System.out.println("\nWelcome to the CJC Adventurer's Guild! May this journey draw out the best in you!");
+            System.out.println("You are about to embark on a quest into the dungeon. But first, choose your class:");
+
+            // Class Selection
+            int classChoice = selectClass(scanner);
+
+            // Initialize player stats
+            int[] playerStats = initializePlayerStats(classChoice);
+            int playerHealth = playerStats[0], maxPlayerHealth = playerStats[1], playerAttack = playerStats[2],
+                    dodgeChance = playerStats[3], playerMana = playerStats[4], maxPlayerMana = playerStats[5];
+
+            int playerLevel = 1, playerXP = 0;
+            final int xpToLevelUp = 100;
+
+            int defeatedMonsters = 0;
+            boolean defending = false;
+            int buffTurns = 0, shieldTurns = 0;
+
+            // Monster and boss properties
+            String[] monsterNames = {"Goblin", "Orc", "Skeleton", "Troll", "Dark Knight", "Dragon"};
+            String[] bossNames = {"Giant Ogre", "Fire Demon", "Lich King", "Shadow Wyrm", "Elder Dragon"};
+            String currentEnemyName;
+
+            while (true) {
+                boolean isBoss = defeatedMonsters > 0 && defeatedMonsters % 5 == 0;
+                int[] enemyStats = generateEnemyStats(isBoss, defeatedMonsters, playerLevel, random);
+                int enemyHealth = enemyStats[0], enemyAttack = enemyStats[1];
+                currentEnemyName = isBoss ? bossNames[random.nextInt(bossNames.length)] : monsterNames[random.nextInt(monsterNames.length)];
+                System.out.println("\n" + currentEnemyName + " appears! Health: " + enemyHealth);
+
+                while (enemyHealth > 0 && playerHealth > 0) {
+                    // Player Turn
+                    System.out.println("\nYour Health: " + playerHealth + "/" + maxPlayerHealth);
+                    System.out.println("Your Mana: " + playerMana + "/" + maxPlayerMana);
+                    System.out.println(currentEnemyName + "'s Health: " + enemyHealth);
+                    System.out.println("Choose your action:");
+                    System.out.println("1: Attack");
+                    System.out.println("2: Defend");
+                    System.out.println("3: Dodge");
+                    System.out.println("4: Flee");
+                    System.out.println("5: Use Special Power");
+
+                    int action = getValidInput(scanner, "Enter your choice: ", 1, 5);
+
+                    if (action == 1) {
+                        // Attack
+                        int damage = random.nextInt(playerAttack) + 1;
+                        enemyHealth -= damage;
+                        System.out.println("You attack " + currentEnemyName + " for " + damage + " damage.");
+                    } else if (action == 2) {
+                        // Defend
+                        defending = true;
+                        System.out.println("You prepare to block " + currentEnemyName + "'s attack.");
+                    } else if (action == 3) {
+                        // Dodge
+                        if (random.nextInt(100) < dodgeChance) {
+                            System.out.println("You successfully dodge the attack!");
+                            continue; // Skip the enemy's turn
+                        } else {
+                            System.out.println("You try to dodge but fail!");
+                        }
+                    } else if (action == 4) {
+                        // Flee
+                        if (random.nextInt(100) < 50) {
+                            System.out.println("You successfully flee from the battle!");
+                            playerHealth = Math.min(playerHealth + 20, maxPlayerHealth); // Heal when resting
+                            break; // Exit the current monster battle
+                        } else {
+                            System.out.println("You try to flee, but fail!");
+                        }
+                    } else if (action == 5) {
+                        // Special Powers
+                        int[] specialResults = useSpecialPower(scanner, random, classChoice, playerAttack, playerMana, maxPlayerMana, shieldTurns, buffTurns, enemyHealth);
+                        enemyHealth = specialResults[0];
+                        playerMana = specialResults[1];
+                    }
+
+                    // Enemy's turn
+                    if (enemyHealth > 0) {
+                        int damage = random.nextInt(enemyAttack) + 1;
+                        if (defending) {
+                            damage /= 2;
+                            defending = false;
+                        }
+                        if (shieldTurns > 0) {
+                            damage /= 2;
+                            shieldTurns--;
+                        }
+                        playerHealth -= damage;
+                        System.out.println(currentEnemyName + " attacks you for " + damage + " damage.");
+                    }
+
+                    // Check if player is dead
+                    if (playerHealth <= 0) {
+                        System.out.println("You have been defeated by " + currentEnemyName + ". Game Over!");
+                        break;
+                    }
+
+                    // Buff effects wear off
+                    if (buffTurns > 0) {
+                        buffTurns--;
+                        if (buffTurns == 0) {
+                            System.out.println("Your buff has worn off.");
+                        }
+                    }
+
+                    // Mana recovery
+                    playerMana = Math.min(playerMana + 5, maxPlayerMana);
+                }
+
+                if (playerHealth <= 0) break;
+
+                // Victory
+                if (enemyHealth <= 0) {
+                    System.out.println("You defeated " + currentEnemyName + "!");
+                    int xpEarned = isBoss ? 200 : 50;
+                    playerXP += xpEarned;
+                    System.out.println("You gained " + xpEarned + " XP!");
+
+                    // Check for level up
+                    while (playerXP >= xpToLevelUp) {
+                        playerXP -= xpToLevelUp;
+                        playerLevel++;
+                        maxPlayerHealth += 20;
+                        maxPlayerMana += 10;
+                        playerAttack += 5;
+                        playerHealth = maxPlayerHealth;
+                        playerMana = maxPlayerMana;
+                        System.out.println("Level up! You are now Level " + playerLevel + ".");
+                    }
+
+                    defeatedMonsters++;
+                }
+            }
+
+            // Ask to play again
+            System.out.println("Would you like to play again? (yes/no)");
+            playAgain = scanner.nextLine().trim().equalsIgnoreCase("yes");
+        }
+
+        System.out.println("Thank you for playing!");
+    }
+
+    // Helper methods
+    public static int selectClass(Scanner scanner) {
+        System.out.println("1: Warrior - High Attack, High Health, Low Dodge Chance");
+        System.out.println("2: Archer - Balanced Attack, Low Health, High Dodge Chance");
+        System.out.println("3: Wizard - Decent Attack, Decent Health, Decent Dodge Chance, Large Mana Pool");
+        return getValidInput(scanner, "Choose your class (1, 2, or 3): ", 1, 3);
+    }
+    public static int[] initializePlayerStats(int classChoice) {
+        if (classChoice == 1) return new int[]{150, 150, 25, 5, 50, 50}; // Warrior
+        if (classChoice == 2) return new int[]{80, 80, 15, 20, 50, 50};  // Archer
+        return new int[]{100, 100, 20, 15, 100, 100};                    // Wizard
+    }
+
+    public static int[] generateEnemyStats(boolean isBoss, int defeatedMonsters, int playerLevel, Random random) {
+        int health = (isBoss ? 150 : 80) + playerLevel * (isBoss ? 20 : 10);
+        int attack = (isBoss ? 25 : 15) + playerLevel * (isBoss ? 5 : 3);
+        return new int[]{health, attack};
+    }
+
+    public static int getValidInput(Scanner scanner, String prompt, int min, int max) {
+        int input = 0;
+        while (true) {
+            try {
+                System.out.print(prompt);
+                input = Integer.parseInt(scanner.nextLine().trim());
+                if (input >= min && input <= max) return input;
+                System.out.println("Invalid input! Please enter a number between " + min + " and " + max + ".");
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid input! Please enter a number.");
+            }
+        }
+    }
+
+    // Special Powers
+    public static int[] useSpecialPower(Scanner scanner, Random random, int classChoice, int playerAttack, int playerMana, int maxPlayerMana, int shieldTurns, int buffTurns, int enemyHealth) {
+        System.out.println("\nSelect your special power:");
+
+        if (classChoice == 1) { // Warrior
+            System.out.println("1: Berserker Rage (Deal heavy damage, costs 30 mana)");
+            System.out.println("2: Iron Wall (Reduce damage for 3 turns, costs 40 mana)");
+            System.out.println("3: Earthquake (Area damage, costs 50 mana)");
+        } else if (classChoice == 2) { // Archer
+            System.out.println("1: Precision Shot (Critical damage, costs 30 mana)");
+            System.out.println("2: Shadow Step (Dodge all attacks for 2 turns, costs 40 mana)");
+            System.out.println("3: Rain of Arrows (AOE attack, costs 50 mana)");
+        } else { // Wizard
+            System.out.println("1: Fireball (High single-target damage, costs 30 mana)");
+            System.out.println("2: Arcane Shield (Absorb damage for 3 turns, costs 40 mana)");
+            System.out.println("3: Meteor Shower (Devastating AOE attack, costs 50 mana)");
+        }
+
+        int choice = getValidInput(scanner, "Enter your choice: ", 1, 3);
+
+        if (choice == 1 && playerMana >= 30) {
+            if (classChoice == 1) { // Warrior
+                int damage = random.nextInt(playerAttack) + 20;
+                enemyHealth -= damage;
+                System.out.println("You unleash Berserker Rage, dealing " + damage + " damage!");
+            } else if (classChoice == 2) { // Archer
+                int damage = random.nextInt(playerAttack) + 30;
+                enemyHealth -= damage;
+                System.out.println("You execute a Precision Shot, dealing " + damage + " critical damage!");
+            } else { // Wizard
+                int damage = random.nextInt(playerAttack) + 25;
+                enemyHealth -= damage;
+                System.out.println("You cast Fireball, dealing " + damage + " damage!");
+            }
+            playerMana -= 30;
+
+        } else if (choice == 2 && playerMana >= 40) {
+            if (classChoice == 1) { // Warrior
+                shieldTurns = 3;
+                System.out.println("You use Iron Wall! Reduced damage for the next 3 turns.");
+            } else if (classChoice == 2) { // Archer
+                shieldTurns = 2;
+                System.out.println("You use Shadow Step! You will dodge all attacks for the next 2 turns.");
+            } else { // Wizard
+                shieldTurns = 3;
+                System.out.println("You cast Arcane Shield! Damage will be absorbed for the next 3 turns.");
+            }
+            playerMana -= 40;
+            } else if (choice == 3 && playerMana >= 50) {
+            if (classChoice == 1) { // Warrior
+                int damage = random.nextInt(playerAttack) + 40;
+                enemyHealth -= damage;
+                System.out.println("You use Earthquake, dealing " + damage + " area damage!");
+            } else if (classChoice == 2) { // Archer
+                int damage = random.nextInt(playerAttack) + 35;
+                enemyHealth -= damage;
+                System.out.println("You unleash Rain of Arrows, dealing " + damage + " area damage!");
+            } else { // Wizard
+                int damage = random.nextInt(playerAttack) + 50;
+                enemyHealth -= damage;
+                System.out.println("You cast Meteor Shower, dealing " + damage + " devastating damage!");
+            }
+            playerMana -= 50;
+
+        } else {
+            System.out.println("Not enough mana to perform this action!");
+        }
+
+        return new int[]{enemyHealth, playerMana};
+    }
+}
